@@ -16,6 +16,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: StudentAttendanceApp()));
 
     // Verify that the login page title is shown.
-    expect(find.text('Student Attendance'), findsOneWidget);
+    expect(find.text('EduCheck'), findsOneWidget);
   });
 }

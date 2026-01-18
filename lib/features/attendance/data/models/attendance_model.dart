@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/attendance_entity.dart';
 
 class AttendanceModel extends AttendanceEntity {
@@ -13,7 +12,7 @@ class AttendanceModel extends AttendanceEntity {
     return AttendanceModel(
       userId: json['userId'] ?? '',
       courseId: json['courseId'] ?? '',
-      date: (json['date'] as Timestamp).toDate(),
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
       status: json['status'] ?? '',
     );
   }
@@ -22,7 +21,7 @@ class AttendanceModel extends AttendanceEntity {
     return {
       'userId': userId,
       'courseId': courseId,
-      'date': Timestamp.fromDate(date),
+      'date': date.toIso8601String(),
       'status': status,
     };
   }

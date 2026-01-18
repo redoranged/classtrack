@@ -6,6 +6,9 @@ import '../../domain/entities/user_entity.dart';
 import '../../domain/usecases/login_user.dart';
 import 'usecase_providers.dart';
 
+// Session Provider untuk tracking active session
+final sessionProvider = StateProvider<bool>((ref) => false);
+
 final currentUserProvider = NotifierProvider<CurrentUserNotifier, UserEntity?>(() {
   return CurrentUserNotifier();
 });
@@ -57,10 +60,18 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
       final loginUser = ref.read(loginUserProvider);
       final user = await loginUser(LoginParams(email: email, password: password));
       ref.read(currentUserProvider.notifier).setUser(user);
+      // Set active session
+      ref.read(sessionProvider.notifier).state = true;
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
+  }
+
+  Future<void> logout() async {
+    ref.read(currentUserProvider.notifier).clearUser();
+    ref.read(sessionProvider.notifier).state = false;
+    state = const AttendanceState();
   }
 
   Future<void> submitAttendance(String courseId, String status) async {

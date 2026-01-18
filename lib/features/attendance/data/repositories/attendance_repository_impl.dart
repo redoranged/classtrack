@@ -2,7 +2,7 @@ import '../../domain/entities/attendance_entity.dart';
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/attendance_repository.dart';
-import '../datasources/attendance_remote_datasource.dart';
+import '../datasources/attendance_mock_datasource.dart';
 import '../models/attendance_model.dart';
 
 class AttendanceRepositoryImpl implements AttendanceRepository {

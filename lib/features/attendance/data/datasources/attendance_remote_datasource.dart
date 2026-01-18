@@ -1,3 +1,7 @@
+// This file is no longer used - replaced with attendance_mock_datasource.dart
+// Keeping for reference only
+
+/*
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
@@ -49,3 +53,4 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     return snapshot.docs.map((doc) => AttendanceModel.fromFirestore(doc.data())).toList();
   }
 }
+*/
