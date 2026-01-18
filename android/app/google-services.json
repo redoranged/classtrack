@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861306930882",
+    "project_id": "tugas2-b03f9",
+    "storage_bucket": "tugas2-b03f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861306930882:android:b154bc90652d6f38a4dd5b",
+        "android_client_info": {
+          "package_name": "com.example.classtrack"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBb-3dAGBWAtnCoFl1C1V3LsFTk7EIZ9Nc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
