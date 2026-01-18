@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/usecase_providers.dart';
+import '../providers/attendance_provider.dart';
 
 class EnrollClassPage extends ConsumerStatefulWidget {
   const EnrollClassPage({super.key});
@@ -12,38 +14,6 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
   final _classCodeController = TextEditingController();
   bool _isLoading = false;
 
-  // Mock available classes untuk contoh
-  final _availableClasses = [
-    {
-      'id': 'CS101',
-      'name': 'Data Structures',
-      'lecturer': 'Prof. Anderson',
-      'schedule': 'Mon, Wed 10:00 AM',
-      'students': '45',
-    },
-    {
-      'id': 'CS202',
-      'name': 'Database Systems',
-      'lecturer': 'Prof. Williams',
-      'schedule': 'Tue, Thu 2:00 PM',
-      'students': '38',
-    },
-    {
-      'id': 'CS303',
-      'name': 'Software Engineering',
-      'lecturer': 'Prof. Johnson',
-      'schedule': 'Mon, Wed 1:00 PM',
-      'students': '52',
-    },
-    {
-      'id': 'CS404',
-      'name': 'AI Fundamentals',
-      'lecturer': 'Prof. Brown',
-      'schedule': 'Tue, Thu 10:00 AM',
-      'students': '41',
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,7 +22,7 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          'Enroll to Classes',
+          'Join Course',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -65,7 +35,33 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search by Class Code
+            // Instruction
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFFEDE9FE),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Color(0xFFC4B5FD), width: 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_rounded, color: Color(0xFF6366F1)),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Ask your lecturer for the class code to join a course.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF4338CA),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Class Code Input
             Text(
               'Enter Class Code',
               style: TextStyle(
@@ -89,8 +85,9 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
               ),
               child: TextField(
                 controller: _classCodeController,
+                textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
-                  hintText: 'e.g., CS101',
+                  hintText: 'e.g., ABC123',
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   prefixIcon: Icon(
                     Icons.code_rounded,
@@ -105,16 +102,12 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        _enrollByCode();
-                      },
+                onPressed: _isLoading ? null : () => _joinCourse(ref),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF6366F1),
                   elevation: 0,
@@ -137,7 +130,7 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
                           Icon(Icons.add_rounded, color: Colors.white),
                           SizedBox(width: 8),
                           Text(
-                            'Enroll',
+                            'Join Course',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -148,186 +141,16 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
                       ),
               ),
             ),
-            SizedBox(height: 32),
-
-            // Available Classes
-            Text(
-              'Available Classes',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF111827),
-              ),
-            ),
-            SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              itemCount: _availableClasses.length,
-              itemBuilder: (context, index) {
-                final classData = _availableClasses[index];
-                return _buildClassCard(context, classData);
-              },
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildClassCard(BuildContext context, Map<String, String> classData) {
-    final colors = [
-      Color(0xFF6366F1),
-      Color(0xFF3B82F6),
-      Color(0xFF10B981),
-      Color(0xFFF59E0B),
-    ];
-    final color = colors[_availableClasses.indexOf(classData) % colors.length];
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _enrollClass(classData['id']!);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.school_rounded,
-                        color: color,
-                        size: 24,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            classData['name']!,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF111827),
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Code: ${classData['id']}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Enroll',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: color,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.person_outline_rounded,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      classData['lecturer']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Icon(
-                      Icons.schedule_rounded,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      classData['schedule']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Icon(
-                      Icons.group_rounded,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      '${classData['students']}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _enrollByCode() {
+  void _joinCourse(WidgetRef ref) async {
     final code = _classCodeController.text.trim();
     if (code.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Please enter a class code'),
@@ -337,31 +160,47 @@ class _EnrollClassPageState extends ConsumerState<EnrollClassPage> {
       return;
     }
 
-    _enrollClass(code);
-  }
-
-  void _enrollClass(String classId) {
-    // TODO: Implement enrollment logic when database is ready
     setState(() => _isLoading = true);
 
-    // Simulate API call
-    Future.delayed(Duration(seconds: 1), () {
+    try {
+      final joinCourseByCode = ref.read(joinCourseProvider);
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) throw Exception('User not authenticated');
+      await joinCourseByCode(JoinCourseByCodeParams(
+        userId: currentUser.id,
+        classCode: code,
+      ));
+
+      if (!mounted) return;
+      _classCodeController.clear();
       setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✓ Successfully enrolled to class $classId!'),
+        const SnackBar(
+          content: Text('✓ Successfully joined course!'),
           backgroundColor: Color(0xFF10B981),
           duration: Duration(seconds: 2),
         ),
       );
 
-      _classCodeController.clear();
-      // Pop setelah 1 detik
-      Future.delayed(Duration(seconds: 1), () {
+      ref.invalidate(coursesProvider);
+
+      Future.delayed(const Duration(seconds: 1), () {
+        if (!mounted) return;
         Navigator.pop(context);
       });
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override

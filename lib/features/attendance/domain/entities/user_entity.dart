@@ -1,11 +1,15 @@
 class UserEntity {
   final String id;
   final String name;
-  final String studentId;
+  final String? studentId;
+  final String role; // 'teacher' or 'student'
+  final DateTime? createdAt;
 
   UserEntity({
     required this.id,
     required this.name,
-    required this.studentId,
+    this.studentId,
+    this.role = 'student',
+    this.createdAt,
   });
 }

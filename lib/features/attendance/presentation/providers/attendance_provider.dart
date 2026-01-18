@@ -1,13 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/usecase/usecase.dart';
 import '../../domain/entities/attendance_entity.dart';
 import '../../domain/entities/course_entity.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/usecases/login_user.dart';
+import '../../domain/usecases/register_user.dart';
 import 'usecase_providers.dart';
+import 'dart:async';
 
 // Session Provider untuk tracking active session
-final sessionProvider = StateProvider<bool>((ref) => false);
+final sessionProvider = NotifierProvider<SessionNotifier, bool>(() {
+  return SessionNotifier();
+});
+
+class SessionNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  
+  void setSession(bool isActive) {
+    state = isActive;
+  }
+  
+  void logout() {
+    state = false;
+  }
+}
 
 final currentUserProvider = NotifierProvider<CurrentUserNotifier, UserEntity?>(() {
   return CurrentUserNotifier();
@@ -27,13 +43,55 @@ class CurrentUserNotifier extends Notifier<UserEntity?> {
 }
 
 final coursesProvider = FutureProvider<List<CourseEntity>>((ref) async {
-  final getCourses = ref.watch(getCoursesProvider);
-  return await getCourses(NoParams());
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+
+  // Strict role-based course listing
+  if (user.role == 'teacher') {
+    final getTeacherCourses = ref.watch(getTeacherCoursesProvider);
+    return await getTeacherCourses(user.id);
+  } else {
+    final getStudentCourses = ref.watch(getStudentCoursesProvider);
+    return await getStudentCourses(user.id);
+  }
 });
 
 final attendanceHistoryProvider = FutureProvider.family<List<AttendanceEntity>, String>((ref, userId) async {
   final getAttendanceHistory = ref.watch(getAttendanceHistoryProvider);
   return await getAttendanceHistory(userId);
+});
+
+// Polling stream for session attendance to approximate real-time updates
+final sessionAttendanceStreamProvider = StreamProvider.family<List<AttendanceEntity>, String>((ref, sessionId) {
+  final getSessionAttendance = ref.read(getSessionAttendanceProvider);
+  // Poll every 3 seconds; cancel on dispose
+  final controller = StreamController<List<AttendanceEntity>>();
+  Timer? timer;
+  Future<void> fetch() async {
+    try {
+      final list = await getSessionAttendance(sessionId);
+      controller.add(list);
+    } catch (e) {
+      // ignore errors in polling
+    }
+  }
+  // initial fetch
+  fetch();
+  timer = Timer.periodic(const Duration(seconds: 3), (_) => fetch());
+  ref.onDispose(() {
+    timer?.cancel();
+    controller.close();
+  });
+  return controller.stream;
+});
+
+// Attendance counts per session (present/absent)
+final sessionAttendanceCountsProvider = FutureProvider.family<Map<String, int>, String>((ref, sessionId) async {
+  final getSessionAttendance = ref.read(getSessionAttendanceProvider);
+  final list = await getSessionAttendance(sessionId);
+  final present = list.where((e) => e.status.toLowerCase() == 'present').length;
+  final absent = list.where((e) => e.status.toLowerCase() == 'absent').length;
+  return {'present': present, 'absent': absent};
 });
 
 class AttendanceState {
@@ -60,7 +118,32 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
       final loginUser = ref.read(loginUserProvider);
       final user = await loginUser(LoginParams(email: email, password: password));
       ref.read(currentUserProvider.notifier).setUser(user);
-      // Set active session
+      ref.read(sessionProvider.notifier).state = true;
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    required String name,
+    String? studentId,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final registerUser = ref.read(registerUserProvider);
+      final user = await registerUser(
+        RegisterParams(
+          email: email,
+          password: password,
+          name: name,
+          role: 'student',
+          studentId: studentId,
+        ),
+      );
+      ref.read(currentUserProvider.notifier).setUser(user);
       ref.read(sessionProvider.notifier).state = true;
       state = state.copyWith(isLoading: false);
     } catch (e) {
@@ -80,14 +163,8 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
 
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final submit = ref.read(submitAttendanceProvider);
-      await submit(AttendanceEntity(
-        userId: user.id,
-        courseId: courseId,
-        date: DateTime.now(),
-        status: status,
-      ));
-      ref.invalidate(attendanceHistoryProvider(user.id));
+      // Check in instead of submitting attendance
+      // This would be called from class session
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

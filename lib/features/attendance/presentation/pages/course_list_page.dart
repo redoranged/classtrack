@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/attendance_provider.dart';
+import '../providers/usecase_providers.dart';
+import '../../domain/usecases/create_course.dart';
 import 'profile_page.dart';
 import 'class_detail_page.dart';
 import 'enroll_class_page.dart';
-import 'login_page.dart';
 
 class CourseListPage extends ConsumerWidget {
   const CourseListPage({super.key});
@@ -12,6 +13,8 @@ class CourseListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final coursesAsync = ref.watch(coursesProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final isTeacher = currentUser?.role == 'teacher';
 
     final courseColors = [
       Color(0xFF6366F1),
@@ -29,7 +32,7 @@ class CourseListPage extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Welcome back! 👋',
+              'Welcome, ${currentUser?.name ?? 'User'}! 👋',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
@@ -37,7 +40,7 @@ class CourseListPage extends ConsumerWidget {
               ),
             ),
             Text(
-              'My Courses',
+              isTeacher ? 'My Classes' : 'My Courses',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -47,33 +50,58 @@ class CourseListPage extends ConsumerWidget {
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Center(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const EnrollClassPage(),
+          if (isTeacher)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    _showCreateCourseDialog(context, ref);
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF59E0B).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  );
-                },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Color(0xFF10B981).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: Color(0xFFF59E0B),
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.add_rounded,
-                    color: Color(0xFF10B981),
-                    size: 20,
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const EnrollClassPage(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Color(0xFF10B981).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: Color(0xFF10B981),
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Center(
@@ -137,6 +165,7 @@ class CourseListPage extends ConsumerWidget {
                     context,
                     course,
                     color,
+                    isTeacher,
                   );
                 },
               ),
@@ -169,6 +198,7 @@ class CourseListPage extends ConsumerWidget {
     BuildContext context,
     dynamic course,
     Color color,
+    bool isTeacher,
   ) {
     return GestureDetector(
       onTap: () {
@@ -209,6 +239,52 @@ class CourseListPage extends ConsumerWidget {
               ),
               height: 80,
             ),
+            // Active session badge for students
+            if (!isTeacher)
+              Consumer(builder: (context, consumerRef, _) {
+                final activeAsync = consumerRef.watch(activeSessionProvider(course.id));
+                return activeAsync.when(
+                  data: (session) {
+                    if (session == null) return SizedBox.shrink();
+                    return Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF10B981)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Active',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF059669),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => SizedBox.shrink(),
+                  error: (err, st) => SizedBox.shrink(),
+                );
+              }),
             Padding(
               padding: EdgeInsets.all(12),
               child: Column(
@@ -270,5 +346,107 @@ class CourseListPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _showCreateCourseDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final lecturerController = TextEditingController();
+    final currentUser = ref.read(currentUserProvider);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.school_rounded, color: Color(0xFFF59E0B)),
+            SizedBox(width: 12),
+            Text('Create New Course'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Course Name',
+                prefixIcon: Icon(Icons.book_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: lecturerController,
+              decoration: InputDecoration(
+                labelText: 'Lecturer Name',
+                prefixIcon: Icon(Icons.person_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isNotEmpty &&
+                  lecturerController.text.isNotEmpty) {
+                Navigator.of(ctx).pop();
+                try {
+                  final teacherId = currentUser!.id;
+                  final createCourse = ref.read(createCourseProvider);
+                  await createCourse(CreateCourseParams(
+                    name: nameController.text,
+                    classCode: _generateClassCode(),
+                    lecturer: lecturerController.text,
+                    teacherId: teacherId,
+                  ));
+                  ref.invalidate(coursesProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Course created successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to create course: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFFF59E0B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text('Create', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _generateClassCode() {
+    // Generate a 6-character random class code
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = DateTime.now().millisecondsSinceEpoch;
+    return List.generate(6, (index) => chars[(random + index) % chars.length]).join();
   }
 }

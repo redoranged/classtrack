@@ -7,21 +7,25 @@ final _mockCourses = [
   CourseModel(
     id: '1',
     name: 'Advanced Data Structures',
+    classCode: 'ADS101',
     lecturer: 'Prof. Smith',
   ),
   CourseModel(
     id: '2',
     name: 'Web Development',
+    classCode: 'WEB102',
     lecturer: 'Prof. Johnson',
   ),
   CourseModel(
     id: '3',
     name: 'Machine Learning',
+    classCode: 'ML103',
     lecturer: 'Prof. Williams',
   ),
   CourseModel(
     id: '4',
     name: 'Database Systems',
+    classCode: 'DBS104',
     lecturer: 'Prof. Brown',
   ),
 ];

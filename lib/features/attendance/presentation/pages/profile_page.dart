@@ -10,13 +10,31 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final historyAsync = ref.watch(attendanceHistoryProvider(user?.id ?? ''));
+
+    if (user == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      });
+      return const SizedBox();
+    }
+
+    final historyAsync = ref.watch(attendanceHistoryProvider(user.id));
 
     return Scaffold(
       backgroundColor: Color(0xFFF9FAFB),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Color(0xFF111827),
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           'My Profile',
           style: TextStyle(
@@ -29,10 +47,15 @@ class ProfilePage extends ConsumerWidget {
       ),
       body: historyAsync.when(
         data: (history) {
-          final presentCount = history.where((r) => r.status == 'Present').length;
-          final absentCount = history.where((r) => r.status == 'Absent').length;
-          final attendanceRate =
-              history.isEmpty ? 0.0 : (presentCount / history.length) * 100;
+          final presentCount = history
+              .where((r) => r.status.toLowerCase() == 'present')
+              .length;
+          final absentCount = history
+              .where((r) => r.status.toLowerCase() == 'absent')
+              .length;
+          final attendanceRate = history.isEmpty
+              ? 0.0
+              : (presentCount / history.length) * 100;
 
           return SingleChildScrollView(
             padding: EdgeInsets.all(16),
@@ -62,10 +85,7 @@ class ProfilePage extends ConsumerWidget {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF6366F1),
-                              Color(0xFF3B82F6),
-                            ],
+                            colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
                           ),
                           shape: BoxShape.circle,
                         ),
@@ -77,38 +97,61 @@ class ProfilePage extends ConsumerWidget {
                       ),
                       SizedBox(height: 16),
                       Text(
-                        'Student User',
+                        user.name,
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF111827),
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        user?.id ?? 'student@example.com',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.grey[600],
+                      if (user.studentId != null &&
+                          user.studentId!.isNotEmpty) ...[
+                        SizedBox(height: 4),
+                        Text(
+                          'ID: ${user.studentId}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
+                      ],
+                      SizedBox(height: 8),
                       Container(
-                        margin: EdgeInsets.only(top: 8),
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: Color(0xFF10B981).withValues(alpha: 0.1),
+                          color: user.role == 'teacher'
+                              ? Color(0xFFF59E0B).withValues(alpha: 0.1)
+                              : Color(0xFF6366F1).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(
-                          'Active',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF10B981),
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              user.role == 'teacher'
+                                  ? Icons.school_rounded
+                                  : Icons.person_outline_rounded,
+                              size: 14,
+                              color: user.role == 'teacher'
+                                  ? Color(0xFFF59E0B)
+                                  : Color(0xFF6366F1),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              user.role == 'teacher' ? 'Teacher' : 'Student',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: user.role == 'teacher'
+                                    ? Color(0xFFF59E0B)
+                                    : Color(0xFF6366F1),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -116,160 +159,176 @@ class ProfilePage extends ConsumerWidget {
                 ),
                 SizedBox(height: 24),
 
-                // Statistics
-                Text(
-                  'Attendance Overview',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
+                // Statistics (students only)
+                if (user.role != 'teacher') ...[
+                  Text(
+                    'Attendance Overview',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
                   ),
-                ),
-                SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        'Attendance Rate',
-                        '${attendanceRate.toStringAsFixed(1)}%',
-                        Color(0xFF6366F1),
-                        Icons.trending_up_rounded,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Present',
-                        presentCount.toString(),
-                        Color(0xFF10B981),
-                        Icons.check_circle_rounded,
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Absent',
-                        absentCount.toString(),
-                        Color(0xFFEF4444),
-                        Icons.cancel_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 24),
-
-                // Recent Activity
-                Text(
-                  'Recent Attendance',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                SizedBox(height: 12),
-                if (history.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 48,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: 12),
-                          Text(
-                            'No attendance records',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: history.length > 5 ? 5 : history.length,
-                    itemBuilder: (context, index) {
-                      final record = history[index];
-                      final isPresent = record.status == 'Present';
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 8),
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isPresent
-                                ? Color(0xFF10B981).withValues(alpha: 0.2)
-                                : Color(0xFFEF4444).withValues(alpha: 0.2),
-                          ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          'Attendance Rate',
+                          '${attendanceRate.toStringAsFixed(1)}%',
+                          Color(0xFF6366F1),
+                          Icons.trending_up_rounded,
                         ),
-                        child: Row(
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Present',
+                          presentCount.toString(),
+                          Color(0xFF10B981),
+                          Icons.check_circle_rounded,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Absent',
+                          absentCount.toString(),
+                          Color(0xFFEF4444),
+                          Icons.cancel_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 24),
+                ],
+
+                // Recent Activity (students only)
+                if (user.role != 'teacher') ...[
+                  Text(
+                    'Recent Attendance',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  if (history.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Column(
                           children: [
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: isPresent
-                                    ? Color(0xFF10B981).withValues(alpha: 0.1)
-                                    : Color(0xFFEF4444).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                isPresent
-                                    ? Icons.check_circle_rounded
-                                    : Icons.cancel_rounded,
-                                color: isPresent
-                                    ? Color(0xFF10B981)
-                                    : Color(0xFFEF4444),
-                                size: 20,
-                              ),
+                            Icon(
+                              Icons.inbox_outlined,
+                              size: 48,
+                              color: Colors.grey[400],
                             ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    record.courseId,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF111827),
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat('MMM dd, yyyy').format(record.date),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.grey[500],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            SizedBox(height: 12),
                             Text(
-                              record.status,
+                              'No attendance records',
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isPresent
-                                    ? Color(0xFF10B981)
-                                    : Color(0xFFEF4444),
+                                color: Colors.grey[600],
+                                fontSize: 14,
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: history.length > 5 ? 5 : history.length,
+                      itemBuilder: (context, index) {
+                        final record = history[index];
+                        final isPresent =
+                            record.status.toLowerCase() == 'present';
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isPresent
+                                  ? Color(0xFF10B981).withValues(alpha: 0.2)
+                                  : Color(0xFFEF4444).withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isPresent
+                                      ? Color(0xFF10B981).withValues(alpha: 0.1)
+                                      : Color(
+                                          0xFFEF4444,
+                                        ).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  isPresent
+                                      ? Icons.check_circle_rounded
+                                      : Icons.cancel_rounded,
+                                  color: isPresent
+                                      ? Color(0xFF10B981)
+                                      : Color(0xFFEF4444),
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      record.courseId,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF111827),
+                                      ),
+                                    ),
+                                    Text(
+                                      DateFormat(
+                                        'MMM dd, yyyy',
+                                      ).format(record.date),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                isPresent ? 'Present' : 'Absent',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isPresent
+                                      ? Color(0xFF10B981)
+                                      : Color(0xFFEF4444),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  SizedBox(height: 24),
+                ],
+
+                // Classes Section
+                if (user.role == 'teacher')
+                  _buildTeacherClassesSection(ref)
+                else
+                  _buildStudentClassesSection(ref),
               ],
             ),
           );
@@ -322,13 +381,9 @@ class ProfilePage extends ConsumerWidget {
                       onPressed: () {
                         Navigator.pop(context);
                         // Logout
-                        ref
-                            .read(attendanceNotifierProvider.notifier)
-                            .logout();
+                        ref.read(attendanceNotifierProvider.notifier).logout();
                         Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (_) => const LoginPage(),
-                          ),
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
                           (route) => false,
                         );
                       },
@@ -369,6 +424,104 @@ class ProfilePage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTeacherClassesSection(WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'My Courses',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+          ),
+        ),
+        SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Color(0xFFE5E7EB)),
+          ),
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.school_rounded, color: Color(0xFFF59E0B)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Created Courses',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Text(
+                'View your created courses in the Courses tab to manage sessions and track student attendance.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStudentClassesSection(WidgetRef ref) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'My Classes',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+          ),
+        ),
+        SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Color(0xFFE5E7EB)),
+          ),
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.book_rounded, color: Color(0xFF6366F1)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Joined Courses',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Text(
+                'View your joined courses in the Courses tab to check in for active sessions.',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
