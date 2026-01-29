@@ -1,11 +1,11 @@
 class SupabaseConfig {
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'HOST_YOUR_SUPABASE_URL_HERE',
+    defaultValue: 'https://zcislfiduksfqwifkhrz.supabase.co',
   );
   
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'YOUR_SUPABASE_ANON_KEY_HERE',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjaXNsZmlkdWtzZnF3aWZraHJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3NDEwMzQsImV4cCI6MjA4NDMxNzAzNH0.MoXcoPkaynskRPBg7V8PjQGmX7BhuwfhT-ghqorPY1M',
   );
 }

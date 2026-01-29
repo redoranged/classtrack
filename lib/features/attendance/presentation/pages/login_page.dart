@@ -95,7 +95,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   SizedBox(height: 32),
                   Text(
-                    'EduCheck',
+                    'ClassTrack',
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
